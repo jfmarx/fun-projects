@@ -1,0 +1,651 @@
+---
+output:
+  html_notebook:
+    code_folding: hide
+  html_document:
+    df_print: paged
+---
+
+<!-- CSS -->
+
+<style type="text/css">
+th {
+    background-color: #7bd3f6;
+    color: black;
+    font-size: 10pt;
+    font-family: "Lato", sans-serif;
+    text-align: left;
+    <!-- margin-left: auto; -->
+    <!-- margin-right: auto; -->
+    <!-- padding-top: 25px; -->
+  }
+
+td {  /* Table  */
+  font-size: 10pt;
+  <!-- text-align: center; -->
+  font-family: "Lato", sans-serif;
+  <!-- padding-top: 25px; -->
+}
+a {
+  color: #00887d;
+  font-size: 12pt;
+  font-family: "Lato", sans-serif;
+}
+body {
+  font-size: 12pt;
+  font-family: "Lato", sans-serif;
+}
+
+h1 {
+  font-size: 12pt;
+}
+h2 {
+  font-size: 12pt;
+  font-style: italic;}
+  
+h3 {
+  font-size: 14pt;
+  font-weight: bolder;
+}
+
+.sidenav {
+  height: 100%;
+  width: 200px;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  background-color: #a6cee3	;
+  overflow-x: hidden;
+  padding-top: 20px;
+}
+
+.sidenav a {
+  padding: 6px 8px 6px 16px;
+  text-decoration: none;
+  font-size: 16pt;
+  font-weight: bolder;
+  font-family: "Lato", sans-serif;
+  color: #ffffff;
+  display: block;
+  text-align: center;
+}
+
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+.sidenav a:hover {
+  color: #f1f1f1;
+}
+
+.main {
+  margin-left: 200px; /* Same as the width of the sidenav */
+
+}
+.main-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 25px
+}
+  /*padding: 0px 5px; */
+}
+
+@media screen and (max-height: 450px) {
+  .sidenav {padding-top: 15px;}
+  .sidenav a {font-size: 18px;}
+}
+</style>
+
+<!-- TITLE INFO  -->
+
+<div class="sidenav">
+  <img src="/Users/c89v/Desktop/am2_logo.png" alt="" width=180px class="center"/>
+  <a href="#about">Text Mining + Sentiment Analysis with Twitter</a>
+  <a href="#top"> <font size="2" color= "#1f78b4"> top of page </font></a>
+</div>
+
+<!-- CONTENT STARTS HERE  -->
+
+<div class="main">
+<div class="body">
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r}
+# load packages, install if needed
+packages = c(
+      "dplyr"
+    , "ggplot2"
+    , "formattable"
+    , "plotly"
+    , "RColorBrewer"
+    , "scales"
+    , "stringr"
+    , "tidyr"
+    , "ElmeR"
+    , "RJDBC"
+    , "kableExtra"
+    , "wesanderson"
+    , "reshape2"
+    , "rtweet"
+    , "tidytext"
+    , "lubridate"
+    , "wordcloud"
+    )
+
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE)
+    library(x, character.only = TRUE)
+  }
+})
+
+options(scipen= 999)
+theme_set(theme_minimal(base_size = 9, base_family = "Roboto"))
+
+```
+
+
+```{r}
+
+# # search for all recent tweets with Nordstrom in them
+# # nstrom_tweets <- search_tweets("nordstrom OR #nordstrom OR @nordstrom OR nordstrom's", n = 18000, type = "recent", lang = "en", include_rts = TRUE)
+# 
+# #extract text
+# #nstrom_tweets$stripped_text <- gsub("http.*","",  nstrom_tweets$text)
+# #nstrom_tweets$stripped_text <- gsub("https.*","", nstrom_tweets$stripped_text)
+# 
+# # nstrom_tweets_day <- nstrom_tweets %>%
+# #   mutate(tweet_day = lubridate::day(as.Date(created_at))) %>%
+# #   dplyr::select(stripped_text, tweet_day) %>%
+# #   ungroup()
+# 
+# #remove stop words
+# # nstrom_tweets_clean <- nstrom_tweets %>%
+# #   mutate(tweet_day = lubridate::day(as.Date(created_at))) %>%
+# #   dplyr::select(stripped_text, tweet_day) %>%
+# #   ungroup() %>%
+
+nstrom_tweets_day <- read.csv("/Users/c89v/Documents/Git/c89v_projects/q4_2018/accounts/code/nstrom_tweets.csv")
+
+nstrom_tweets_day[] <- lapply(nstrom_tweets_day, as.character)
+```
+
+<h1 id ="top">Author: <font color="#ee8f71"><b>Jessica Marx</b></font></h1>
+
+#Date: __<font color="#ee8f71"> 19 November 2018 </font>__
+
+##Dataset: 
+November 8-16, 2018; tweets mentioning Nordstrom (and variations).
+
+##Jira Story: [NORDACE-8398](https://jira.nordstrom.net/browse/NORDACE-8398) 
+
+##Code: [R](https://gitlab.nordstrom.com/nordace/digital/analytics/c89v_projects/blob/master/q4_2018/team_organization/code/twitter_text_mining.Rmd) 
+##Purpose: 
+The DA team recently attended an R conference, which featured several talks on Text Mining and Sentiment analysis, including one from the author of the `tidytext` package. We wanted to take what we learned and apply it with regard to Nordstrom and how the company is discussed in the Twitter-verse. 
+
+##Methodology: 
+Using the `rtweet` package, we pulled the maximum number of recent records mentioning Nordstrom (and all relevant variations -- #nordstrom, @nordstrom, etc.), including re-tweets. 
+
+##Results: 
+The following is meant to be a demonstration of the various types of text analyses that can be done with text mining and R. </p>
+<p> First off, we used the `tidytext` package to separate each tweet by word, eliminate non-meaningful words (AKA "stop words"), and join words to the "Bing" sentiment lexicon. Note that "Bing" is binary -- words are classified as either "Positive" or "Negative."
+
+```{r}
+
+nstrom_tweets_clean <- nstrom_tweets_day %>% 
+  unnest_tokens(word, stripped_text) %>%
+  anti_join(stop_words) %>% 
+  dplyr::mutate(tweet_day = as.integer(tweet_day)) %>% 
+  dplyr::filter(!tweet_day %in% c(6, 7))
+
+#update lexicon
+
+nstrom_sent_bing <- nstrom_tweets_clean %>%
+  inner_join(get_sentiments("bing")) %>% 
+  dplyr::filter(!tweet_day %in% c(6, 7))
+
+nstrom_sent_bing = nstrom_sent_bing %>% 
+  dplyr::group_by(tweet_day, sentiment, word) %>%
+  dplyr::summarize(n = length(word)) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(desc(n)) %>% 
+  dplyr::mutate(tweet_day = as.integer(tweet_day))
+
+plot_a = ggplot(nstrom_sent_bing, aes(x=reorder(sentiment, n), 
+                             y = n, , 
+                             fill = sentiment,
+                             text = paste("Date: November", tweet_day, ", 2018",
+                                          "<br>Sentiment:", sentiment,
+                                          "<br>Score:", n))) + 
+  geom_bar(stat = "identity", position = "identity") +  
+  facet_wrap(.~tweet_day) + 
+  ylab("Word Count") + 
+  xlab("Sentiment Counts by Day") + 
+  scale_fill_brewer(palette = "Set2", name = "Sentiment", direction = -1) + 
+  theme(axis.text.x = element_blank())
+
+ggplotly(plot_a, tooltip = "text", width = 900, height = 550)
+
+```
+
+This seems clear enough. But what words are contributing to each sentiment?
+
+```{r}
+
+x = nstrom_tweets_clean$word
+nstrom_words <- x
+nstrom_words <- data.frame(nstrom_words)
+nstrom_words[] <- lapply(nstrom_words, as.character)
+
+tibblez = nstrom_words %>% 
+  dplyr::rename(word = nstrom_words) %>%
+  dplyr::group_by(word) %>%
+  dplyr::summarize(n = length(word)) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(desc(n))
+
+
+tibblefiltered = tibblez %>% 
+  dplyr::filter(n > 1)
+attach(tibblefiltered)
+barsentiment <- tibblefiltered %>%
+  inner_join(get_sentiments("bing"), by = c("word"))
+
+attach(barsentiment)
+
+plot_c = barsentiment %>%
+    dplyr::count(sentiment, word, n=n) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(n >= 35) %>%
+  # filter(!word %in% ignore_words) %>%
+  # filter(word != "free") %>% #doesn't need to add to weight we don't know context 
+    dplyr::mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+    dplyr::mutate(word = reorder(word, n)) %>%
+    ggplot(aes(word, n, fill = factor(sentiment),
+               text = paste("Word:", word,
+                            "<br>Mentions:", n))) +
+    geom_bar(stat = "identity") +
+    scale_fill_brewer(palette = "Set2", name = "Sentiment", direction = -1) + 
+    ylab("Contribution to sentiment") +
+    xlab("Words mentioned more than 30x") + 
+    coord_flip() 
+
+ggplotly(plot_c, tooltip = "text", width = 900, height = 750)
+
+
+```
+
+Most of these words seem correctly applied to their sentiment, but a few stand out as ambiguous or misclassified: 
+<ul>
+  <li>free</li>
+  <li>trump</li>
+  <li>fall</li>
+</ul>
+We can remove them as neutral words (for now) and return to our charts showing sentiments by day. 
+
+```{r}
+nstrom_sent_bing2 = nstrom_sent_bing %>% 
+  dplyr::filter(!word %in% c("fall", "trump", "free", "rack", "black", "puma", "credit", "money", "tree",  "pop", "hit"))
+
+plot_b = ggplot(nstrom_sent_bing2, aes(x=reorder(sentiment, n), y = n, group = 1,
+                              text = paste("Date: November", tweet_day, ", 2018",
+                                          "<br>Sentiment:", sentiment,
+                                          "<br>Score:", n))) + 
+  geom_bar(stat = "identity", position = "identity", aes(fill = sentiment)) +
+  facet_wrap(.~tweet_day) + 
+  ylab("Word Count") + 
+  xlab("Sentiment Counts by Day") + 
+  scale_fill_brewer(palette = "Set2", direction = -1, name = "Sentiment") +  
+  #scale_fill_brewer(palette = "Set2", name = "Sentiment", direction = -1) +
+  theme(axis.text.x = element_blank())
+
+ggplotly(plot_b, tooltip = "text", width = 900, height = 550)
+
+
+```
+
+We can also use the "NRC" lexicon to track additional sentiments: 
+
+```{r}
+
+nstrom_sent_nrc <- nstrom_tweets_clean %>%
+  inner_join(get_sentiments("nrc")) %>% 
+  dplyr::count(word, sentiment, sort = TRUE) %>% 
+  dplyr::ungroup() %>%
+  dplyr::filter(!sentiment %in% c("positive")) %>% 
+  dplyr::filter(!word %in% c("fall", "trump", "free", "rack", "black", "puma", "credit", "money", "tree", "pop", "hit"))
+
+nstrom_nrc_counts = nstrom_sent_nrc %>% 
+  dplyr::group_by(sentiment) %>%
+  dplyr::top_n(10) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(word = reorder(word, n))
+
+plot_d = ggplot(nstrom_nrc_counts, aes(x=reorder(word, n), y = n, fill = sentiment,
+                              text = paste("Word:", word,
+                                          "<br>Sentiment:", sentiment,
+                                          "<br>Mentions:", n), group = 1)) + 
+  geom_bar(stat = "identity") +  
+  facet_wrap(.~sentiment, scales = "free_y", ncol = 3) + 
+  ylab("Top 10 Words per Sentiment") + 
+  xlab("") + 
+  scale_fill_brewer(palette = "Paired", name = "Sentiment") +
+  coord_flip() + 
+  theme(axis.text.x = element_blank())
+
+ggplotly(plot_d, tooltip = "text", width = 900, height = 550)
+
+
+```
+
+Everyone loves a __word cloud__!
+
+```{r, message=FALSE, warning=FALSE}
+ 
+nstrom_cloud = nstrom_tweets_clean %>% 
+  anti_join(stop_words) %>%
+  dplyr::ungroup() %>% 
+  dplyr::filter(!word %in% c("fall", "trump", "free", "rack", "black", "puma", "credit", "money", "tree", "pop", "hit", "nordstrom")) %>%
+  dplyr::count(word) %>%
+  dplyr::filter(!word =="shipping") %>%
+  with(wordcloud(word, n, max.words = 100))
+
+```
+##Term Frequency
+We can look at term frequency by day. This just shows us that every day there are a few words that are used extremely frequently and many that are used infrequently, which intuitively makes sense. 
+
+```{r, message=FALSE, warning=FALSE}
+#term frequency
+
+day_words <- nstrom_tweets_clean %>%
+  dplyr::count(tweet_day, word, sort = TRUE) %>% 
+  ungroup()
+
+total_words <- day_words %>% 
+  dplyr::group_by(tweet_day) %>% 
+  dplyr::summarize(total = sum(n))
+
+day_words <- left_join(day_words, total_words)
+
+#let’s look at the distribution of n/total for each day, the number of times a word appears in a day divided by the total number of terms (words) in that day This is exactly what term frequency is.
+plot_e = ggplot(day_words, aes(n/total, fill = factor(tweet_day),
+                               text = paste("Date: November", tweet_day, ", 2018",
+                                            "<br>Rank:", n,
+                                            "<br>Unique Daily Words:", comma(total)))) +
+  geom_histogram() +
+  xlim(NA, 0.004) +  
+  scale_fill_brewer(palette = "Paired", name = "Day in November 2018") + 
+  theme(legend.position = "none") + 
+  facet_wrap(~tweet_day, ncol = 3, scales = "free_y")
+
+ggplotly(plot_e, tooltip = "text", width = 900, height = 550)
+
+
+```
+##Zipf's Law
+Illustrating the relationship between the frequency that a word is used and its end rank with __Zipf’s law__ (which states that the frequency that a word appears is inversely proportional to its rank).
+<br> _FYI: George Zipf was a 20th century American linguist._
+
+
+```{r}
+
+freq_by_rank <- day_words %>% 
+  dplyr::group_by(tweet_day) %>% 
+  dplyr::mutate(rank = row_number(), 
+         `term frequency` = n/total)
+
+freq_by_rank %>% 
+  ggplot(aes(rank, `term frequency`, 
+             color = factor(tweet_day))) + 
+  geom_line(size = 0.5, alpha = 0.8, show.legend = FALSE) + 
+  scale_color_brewer(palette = "Paired") + 
+  scale_x_log10() +
+  scale_y_log10() + 
+  ylab("term frequency")
+
+```
+
+The deviations at low rank mean that people who tweet about Nordstrom use a lower percentage of the most common words than what is expected. 
+
+Here is the same graph, but with an approximation of the slope: 
+
+```{r}
+# Let’s see what the exponent of the power law is for the middle section of the rank range.
+rank_subset <- freq_by_rank %>% 
+  dplyr::filter(rank < 500,
+         rank > 10)
+
+# lm(log10(`term frequency`) ~ log10(rank), data = rank_subset)
+
+freq_by_rank %>% 
+  ggplot(aes(rank, `term frequency`, color = factor(tweet_day))) + 
+  geom_abline(intercept = -1.1641, slope = -0.8522, color = "black", linetype = 2) +
+  scale_color_brewer(palette = "Paired") + 
+  geom_line(size = 0.5, alpha = 0.8, show.legend = FALSE) + 
+  scale_x_log10() +
+  scale_y_log10() +
+  ylab("term frequency")
+
+
+```
+
+##TF IDF
+The idea of tf-idf is to find the important words -- words that stand out -- by decreasing the weight for commonly used words and increasing the weight for words that are not used very much in a collection. Calculating tf-idf attempts to find the words that are important (i.e., common) in a text, but not too common. 
+<p> _November 8 - 16, 2018:_ </p>
+```{r}
+
+day_words2 <- day_words %>%
+  bind_tf_idf(word, tweet_day, n) %>% 
+  dplyr::arrange(desc(tf_idf))
+
+plot_day2 = 
+day_words2 %>%
+  dplyr::arrange(desc(tf_idf)) %>%
+  dplyr::mutate(word = factor(word, levels = rev(unique(word)))) %>% 
+  dplyr::group_by(tweet_day) %>% 
+  top_n(10) %>% 
+  ungroup %>%
+  ggplot(aes(word, tf_idf, fill = factor(tweet_day), 
+             text = paste("Word:", word, 
+                          "<br>TF IDF:", number((tf_idf), 
+                                                       accuracy = .0001),
+                          "<br>TF:", number((tf), 
+                                                       accuracy = .0001),
+                          "<br>IDF:", number((idf), 
+                                                       accuracy = .0001),
+                          "<br>Total Daily Words:", comma(total),
+                          "<br>Daily Mentions:", n,
+                          "<br>Date: November", tweet_day, ", 2018"
+                          ))) +
+  geom_col(show.legend = FALSE) +
+  labs(x = NULL, y = "") +
+  scale_fill_brewer(palette = "Paired") +
+  facet_wrap(~tweet_day, ncol = 3, scales = "free") +
+  coord_flip() + 
+  theme(legend.position = "none") + 
+  theme(axis.text.x = element_text(angle=15, size = 6))
+
+ggplotly(plot_day2, tooltip = "text", width = 900, height = 550)
+#   layout(showlegend = FALSE, margin = list(r = 50, b = 50, l = 50))
+
+```
+
+##Tokenizing with ngrams
+<br>When a word is preceded by a negating word, its meaning becomes its inverse. Let's take a look using the "AFINN" lexicon, which scores each sentiment with different weights. Which words in the previous charts when seen in this context had an opposite meaning? 
+<p> __Not...__ </p>
+
+
+```{r}
+
+nstrom_tweets_day[] <- lapply(nstrom_tweets_day, as.character)
+
+nstrom_bigrams <- nstrom_tweets_day %>%
+  unnest_tokens(bigram, stripped_text, token = "ngrams", n = 2)
+
+bigrams_separated <- nstrom_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+#how often words are preceded by a word like “not”:
+
+bigrams_separated2 <- bigrams_separated %>%
+  dplyr::filter(word1 == "not") %>%
+  dplyr::count(word1, word2, sort = TRUE)
+
+AFINN <- get_sentiments("afinn")
+
+#We can then examine the most frequent words that were preceded by “not” and were associated with a sentiment.
+not_words <- bigrams_separated2 %>%
+  dplyr::filter(word1 == "not") %>%
+  dplyr::inner_join(AFINN, by = c(word2 = "word")) %>%
+  dplyr::count(word2, score, sort = TRUE) %>%
+  dplyr::ungroup() %>% 
+  dplyr::rename("n" = "n")
+
+#which words contributed the most in the “wrong” direction. To compute that, we can multiply their score by the number of times they appear (so that a word with a score of +3 occurring 10 times has as much impact as a word with a sentiment score of +1 occurring 30 times). 
+
+plot_not = not_words %>%
+  dplyr::mutate(contribution = n * -score) %>%
+  dplyr::arrange(desc(abs(contribution))) %>%
+  dplyr::mutate(word2 = reorder(word2, contribution)) %>%
+  ggplot(aes(word2, -n * score, fill = n * score > 0, 
+             text = paste("not ", word2, "<br> Score:", -n * score))) +
+  scale_fill_brewer(palette = "Set2") +
+  geom_col(show.legend = FALSE) +
+  xlab("Words preceded by NOT") +
+  ylab("Sentiment score * number of occurrences * -1") +
+  coord_flip()
+
+ggplotly(plot_not, tooltip = "text", width = 900, height = 550) %>% 
+  layout(showlegend = FALSE, margin = list(b = 50, l = 50))
+
+
+# not_words %>%
+#   mutate(contribution = (nn * score)) %>%
+#   arrange(desc(abs(contribution))) %>%
+#   head(20) %>%
+#   mutate(word2 = reorder(word2, contribution)) %>%
+#   ggplot(aes(word2, nn * score, fill = nn * score > 0)) +
+#   geom_col(show.legend = FALSE) +
+#   xlab("Words preceded by \"not\"") +
+#   ylab("Sentiment score * number of occurrences * -1") +
+#   coord_flip()
+
+
+```
+
+Note that we multiplied the sentiment score by -1 to reflect the inverse impact of the word "not." Here is the same concept illustrated with a few more negating words: 
+
+```{r}
+
+negation_words <- c("not", "no", "never", "don't")
+
+negated_words <- bigrams_separated %>%
+  dplyr::filter(word1 %in% negation_words) %>%
+  dplyr::inner_join(AFINN, by = c(word2 = "word")) %>%
+  dplyr::count(word1, word2, score, sort = TRUE) %>%
+  dplyr::ungroup()
+
+plot_neg <- negated_words %>%
+  dplyr::mutate(contribution = n * -score) %>%
+  dplyr::arrange(abs(desc(contribution))) %>%
+  #head(30) %>%
+  dplyr::mutate(word2 = reorder(word2, contribution)) %>%
+  ggplot(aes(word2, n * -score, fill = n * score > 0, 
+             text = paste(word1, " ", word2, "<br> Score:", -n * score))) +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal(base_size = 9) +
+  geom_col(show.legend = FALSE) +
+  xlab("") +
+  ylab("Sentiment score * number of occurrences") +
+  facet_wrap(~word1, ncol = 2, scales = "free_y") + 
+  coord_flip()
+
+ggplotly(plot_neg, tooltip = "text", width = 900, height = 550) %>% 
+  layout(showlegend = FALSE, margin(r = 20, b = 50, l = 20))
+
+```
+
+Certain adjectives and adverbs are used for emphasis -- _very, really, extremely, only, actually, so..._ etc. We can double the score of the second word score to reflect the impact from the first word.  
+
+```{r}
+
+
+nstrom_counts = nstrom_tweets_day %>% 
+unnest_tokens(word, stripped_text) %>% 
+dplyr::group_by(word) %>% 
+dplyr::summarize(n = length(word)) %>%
+dplyr::arrange(desc(n)) %>% 
+dplyr::ungroup() 
+
+n_y = nstrom_counts %>% dplyr::filter(str_detect(word, "y$"))
+
+emphasis_words <- c("very", "really", "extremely", "only", "actually", "so")
+
+emphatic_words <- bigrams_separated %>%
+  dplyr::filter(word1 %in% emphasis_words) %>%
+  dplyr::inner_join(AFINN, by = c(word2 = "word")) %>%
+  dplyr::count(word1, word2, score, sort = TRUE) %>%
+  dplyr::ungroup()
+
+plot <- emphatic_words %>%
+  dplyr::mutate(contribution = 2* n * score) %>%
+  dplyr::arrange(abs(desc(contribution))) %>%
+  head(50) %>%
+  dplyr::mutate(word2 = reorder(word2, contribution)) %>%
+  ggplot(aes(word2, 2 * n * score, fill = n * score > 0, 
+            text = paste(word1, " ", word2, "<br> Score:", n * score))) +
+  scale_fill_brewer(palette = "Set2", direction = -1) +
+  theme_minimal(base_size = 9) + 
+  geom_col(show.legend = FALSE) +
+  xlab("") +
+  ylab("Sentiment score * number of occurrences * 2") +
+  facet_wrap(~word1, ncol = 2, scales = "free_y") + 
+  coord_flip() 
+
+ggplotly(plot, tooltip = "text", width = 900, height = 550) %>% 
+  layout(showlegend = FALSE, margin = list(r = 20, b = 50, l = 80))
+
+
+```
+##Network Analysis
+Finally, we can visualize a network of bigrams (paired words): 
+
+```{r}
+
+bigrams_filtered <- bigrams_separated %>%
+  dplyr::filter(!word1 %in% stop_words$word) %>%
+  dplyr::filter(!word2 %in% stop_words$word)
+
+bigram_counts <- bigrams_filtered %>% 
+  dplyr::count(word1, word2, sort = TRUE)
+
+library(igraph)
+
+bigram_graph <- bigram_counts %>%
+  dplyr::filter(n > 50) %>%
+  graph_from_data_frame()
+
+#bigram_graph
+
+library(ggraph)
+
+set.seed(2017)
+
+
+ggraph(bigram_graph, layout = "fr") +  
+  theme_void() +   
+  geom_edge_link(aes(edge_alpha = 1, color = "red"), arrow = arrow(type = "closed", length=unit(.075, "inches")), show.legend = FALSE) +  
+  geom_node_point(color = "turquoise", size = 4, alpha = .5) +  
+  geom_node_text(aes(label = name), size = 3, vjust = 1, hjust = 1) 
+
+```
+<p>Thanks for reading through; this project was fascinating to work on and we look forward to applying text mining to more areas within Nordstrom.</p>
+
