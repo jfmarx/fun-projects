@@ -1,0 +1,421 @@
+---
+output:
+  html_notebook:
+    code_folding: hide
+    toc: false
+    toc_float: true
+    toc_depth: 5
+    number_sections: false
+    
+---
+<style type="text/css">
+
+body {
+  font-size: 12pt;
+  font-family: "Roboto", sans-serif;
+}
+
+th {
+    background-color: #a6cee3;
+    color: black;
+    font-size: 10pt;
+    font-family: "Roboto", sans-serif;
+    text-align: left;
+    <!-- margin-left: auto; -->
+    <!-- margin-right: auto; -->
+    <!-- padding-top: 25px; -->
+  }
+
+td {  /* Table  */
+  font-size: 10pt;
+  <!-- text-align: center; -->
+  font-family: "Roboto", sans-serif;
+  <!-- padding-top: 25px; -->
+}
+
+h1 {
+  font-size: 16pt;
+  font-family: "Oswald", sans-serif;
+}
+  
+h2 {
+  font-size: 14pt;
+  font-family: "Oswald", sans-serif;
+  <!-- color: #1f78b4; -->
+  font-family: "Oswald", sans-serif;
+}
+
+h3 {
+  font-size: 14pt;
+  font-family: "Oswald", sans-serif;
+  }
+  
+h4 {
+  font-size: 12pt;
+  font-family: "Oswald", sans-serif;
+}
+h5 {
+  font-size: 12pt;
+  font-family: "Oswald", sans-serif;
+}
+a {
+  color: #1f78b4;
+  font-size: 12pt;
+  font-family: "Oswald", sans-serif;
+}
+
+
+.sidenav {
+  height: 100%;
+  width: 200px;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  background-color: #a6cee3;
+  overflow-x: hidden;
+  padding-top: 20px;
+}
+
+.sidenav a {
+  padding: 6px 8px 6px 16px;
+  text-decoration: none;
+  font-size: 18pt;
+  <!-- font-weight: bolder; -->
+  font-family: "Oswald", sans-serif;
+  color: #FFFFFF;
+  display: block;
+  text-align: center;
+}
+
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+.sidenav a:hover {
+  color: #f1f1f1;
+}
+
+.main {
+  margin-left: 200px; /* Same as the width of the sidenav */
+
+}
+.main-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 25px
+}
+  /*padding: 0px 5px; */
+}
+
+@media screen and (max-height: 450px) {
+  .sidenav {padding-top: 15px;}
+  .sidenav a {font-size: 18px;}
+}
+</style>
+
+<!-- TITLE INFO  -->
+
+<div class="sidenav">
+  <a href="#about">Music of the O.C.</a>
+  <img src="/Users/c89v/Documents/Fun/oc.jpg" alt="" width=180px class="center"/>
+  <a href="#top"> <font face="Roboto" size="2" color= "#1f78b4"> top of page </font></a>
+</div>
+
+<!-- CONTENT STARTS HERE  -->
+
+<div class="main">
+<div class="body">
+
+##Author: __<font color="#1f78b4">Jessica Marx</font>__
+
+##Date: __<font color="#1f78b4"; font size="3">`r format(Sys.time(), "%d %B %Y")`</font>__
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+```
+
+```{r package, message = FALSE, warning = FALSE}
+# load packages, install if needed
+packages = c(
+      "dplyr"
+    , "ggplot2"
+    , "formattable"
+    , "plotly"
+    , "RColorBrewer"
+    , "scales"
+    , "stringr"
+    , "tidyr"
+    , "ElmeR"
+    , "RJDBC"
+    , "kableExtra"
+    , "wesanderson"
+    , "reshape2"
+    , "rtweet"
+    , "tidytext"
+    , "lubridate"
+    , "wordcloud"
+    , "ggpubr"
+    , "ggthemes"
+    , "knitrBootstrap"
+    , "DT"
+    , "MatchIt"
+    , "beyonce"
+    , "UpSetR"
+    , "gganimate"
+    , "wordcloud2"
+    , "widyr"
+    , "ggraph"
+    , "igraph"
+    , "aod"
+    , "corrplot"
+    , "ROCR"
+    , "InformationValue"
+    , "car"
+    , "glmnet"
+    , "caret"
+    , "kernlab"
+    , "pdp"
+    , "rpart.plot"
+    , "rpart"
+    , "e1071"
+    )
+
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE)
+    library(x, character.only = TRUE)
+  }
+})
+
+
+options(scipen= 999)
+theme_set(theme_minimal(base_size = 9, base_family = "Roboto"))
+```
+
+```{r functions}
+
+#functions!
+
+#round 
+round.to <- function(x, b) {
+  round(x/b)*b
+}
+
+#odds to probability
+odds.to.prob <- function(odds) {
+  odds/(1 + odds) 
+}
+
+#log odds to probability 
+logit2prob <- function(logit){
+  odds <- exp(logit)
+  prob <- odds / (1 + odds)
+  return(prob)
+}
+
+#convert to a range
+range01 <- function(x){
+  (x-min(x))/(max(x)-min(x))
+}
+
+#function to get vector of color values from RColorBrewer
+get_hex_values <- function(pal) {
+	brewer.pal(brewer.pal.info[pal, "maxcolors"], pal)
+}
+paired_cols <- get_hex_values(pal = "Paired")
+
+
+```
+
+##Most Frequently Played Artists 
+
+```{r}
+
+oc_songs %>% 
+  drop_na() %>% 
+  filter(Artist %in% top$Artist) %>% 
+  group_by(Artist) %>% 
+  count() %>% 
+  arrange(desc(n)) %>% 
+  head(30) %>% 
+  ungroup() %>% 
+  mutate(Artist = reorder(Artist, -n)) %>% 
+  plot_ly(
+    x = ~Artist,
+    y = ~n,
+    type = "bar",
+    color = ~Artist,
+    # colors = "Paired",
+    height = 550,
+    width = 900,
+    hoverinfo = 'text',
+    text = ~paste(
+    "Artist:", Artist,
+    "<br>Songs Played:", comma(n)
+    )
+  ) %>% 
+  layout(
+    showlegend = FALSE,
+    #title = "Top 30 Most Frequently Played Artists",
+    font = list(family = "Arial"), 
+    margin = list(r = 100),
+    yaxis = list(title = "Songs Played"), 
+    barmode = 'dodge',
+    xaxis = list(title = "Artist",
+                     tickangle = 30)
+
+)
+
+```
+
+##By Season {.tabset}
+
+Block Party, Death Cab, Youth Group, Zero 7, Sufjan Stevens, and M. Craft are the only artists to span 3 seasons. 
+
+```{r}
+
+oc_songs %>% 
+  drop_na() %>% 
+  filter(Artist %in% top$Artist) %>% 
+  group_by(Season, Artist) %>% 
+  count() %>% 
+  ungroup() %>% 
+  group_by(Artist) %>%
+  mutate(order_n = sum(n)) %>%
+  arrange(desc(order_n)) %>% 
+  ungroup() %>% 
+  mutate(Season = as.factor(`Season`),
+         Artist = reorder(Artist, -order_n)) %>% 
+  #mutate(Artist = reorder(Artist, -n)) %>% 
+  plot_ly(
+    x = ~Artist,
+    y = ~n,
+    type = "bar",
+    height = 550,
+    width = 900,
+    name = ~paste("Season ", Season),
+    hoverinfo = 'text',
+    legend = ~Season, 
+    color = ~Season,
+    colors = "Set2", 
+    text = ~paste(
+    "Artist:", Artist,
+    "<br>Songs Played:", comma(n),
+    "<br>Season:", Season
+    )
+  ) %>% 
+  layout(
+    #title = "Top 30 Most Frequently Played Artists",
+    font = list(family = "Arial"), 
+    margin = list(r = 100),
+    yaxis = list(title = "Songs Played"), 
+    barmode = 'stack',
+    xaxis = list(title = "Artist",
+                     tickangle = 30)
+
+)
+
+```
+
+##Artist Country of Origin
+
+```{r}
+
+oc_artists = artists %>% 
+  filter(artist_mb %in% oc_songs$Artist)
+
+oc_artists %>% 
+  mutate(country_mb = if_else(is.na(country_mb), country_lastfm, country_mb)) %>% 
+  group_by(country_mb) %>% 
+  summarise(distinct_artist = n_distinct(artist_mb)) %>% 
+  arrange(desc(distinct_artist)) %>%
+  ungroup() %>% 
+  mutate(country_mb = reorder(country_mb, -distinct_artist)) %>% 
+    plot_ly(
+    x = ~country_mb,
+    y = ~distinct_artist,
+    type = "bar",
+    width = 900
+    , height = 550, 
+    hoverinfo = 'text',
+    color = ~country_mb,
+    colors = "Set2", 
+    text = ~paste(
+    "Country:", country_mb,
+    "<br>Number of Artists:", comma(distinct_artist))
+    ) %>% 
+  layout(
+    showlegend = FALSE,
+    font = list(family = "Arial"), 
+    margin = list(r = 100),
+    yaxis = list(title = "Artists"), 
+    #barmode = 'stack',
+    xaxis = list(title = "Country",
+                     tickangle = 30)
+    )
+  
+
+```
+
+##Genres
+
+```{r}
+
+oc_tags = oc_artists %>% 
+  mutate(tags = ifelse(is.na(tags_mb), tags_lastfm, tags_mb)
+         , country = ifelse(is.na(country_mb), country_lastfm, country_mb)
+         ) %>% 
+  select(artist_lastfm, country, tags) %>% 
+  unnest_tokens(word, tags, token = stringr::str_split, pattern = ";") %>% 
+  unique() %>% 
+  group_by(word) %>% 
+  count() %>% 
+  summarise(n = sum(n)) %>% 
+  arrange(desc(n)) %>% 
+  head(32)
+
+oc_tags = oc_tags[c(-8), ]
+oc_tags = oc_tags[c(-18), ]
+oc_tags$word = toupper(oc_tags$word)
+
+oc_tags %>% 
+  drop_na() %>% 
+  mutate(total = length(unique(oc_artists$artist_mb))
+         , pct = n/total
+         , word = reorder(as.factor(word), n)
+         ) %>% 
+  plot_ly(
+    x = ~n
+    , y = ~word
+    , mode = "bar"
+    , color = ~word
+    , colors = "Spectral"
+    , showlegend = FALSE
+    , width = 900
+    , height = 550
+    , hoverinfo = "text"
+    , text = ~paste(
+      n, "or", percent(pct),
+      "of artists featured on <br> the O.C. fall under the", word, "genre."
+    )
+  ) %>% 
+  layout(
+    xaxis = list(
+      title = "Artists"
+    )
+    , yaxis = list(
+      title = "Genre"
+    )
+    , font = list(family = "Arial")
+  )
+  
+
+```
+

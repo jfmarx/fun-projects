@@ -1,0 +1,879 @@
+---
+output:
+  html_notebook:
+    code_folding: hide
+    toc: false
+    toc_float: true
+    toc_depth: 5
+    number_sections: false
+    
+---
+<style type="text/css">
+
+body {
+  font-size: 12pt;
+  font-family: "Roboto", sans-serif;
+}
+
+th {
+    background-color: #a6cee3;
+    color: black;
+    font-size: 10pt;
+    font-family: "Roboto", sans-serif;
+    text-align: left;
+    <!-- margin-left: auto; -->
+    <!-- margin-right: auto; -->
+    <!-- padding-top: 25px; -->
+  }
+
+td {  /* Table  */
+  font-size: 10pt;
+  <!-- text-align: center; -->
+  font-family: "Roboto", sans-serif;
+  <!-- padding-top: 25px; -->
+}
+
+h1 {
+  font-size: 16pt;
+  font-family: "Oswald", sans-serif;
+}
+  
+h2 {
+  font-size: 14pt;
+  font-family: "Oswald", sans-serif;
+  <!-- color: #1f78b4; -->
+  font-family: "Oswald", sans-serif;
+}
+
+h3 {
+  font-size: 14pt;
+  font-family: "Oswald", sans-serif;
+  }
+  
+h4 {
+  font-size: 12pt;
+  font-family: "Oswald", sans-serif;
+}
+h5 {
+  font-size: 12pt;
+  font-family: "Oswald", sans-serif;
+}
+a {
+  color: #1f78b4;
+  font-size: 12pt;
+  font-family: "Oswald", sans-serif;
+}
+
+
+.sidenav {
+  height: 100%;
+  width: 200px;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  background-color: #a6cee3;
+  overflow-x: hidden;
+  padding-top: 20px;
+}
+
+.sidenav a {
+  padding: 6px 8px 6px 16px;
+  text-decoration: none;
+  font-size: 18pt;
+  <!-- font-weight: bolder; -->
+  font-family: "Oswald", sans-serif;
+  color: #FFFFFF;
+  display: block;
+  text-align: center;
+}
+
+.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+.sidenav a:hover {
+  color: #f1f1f1;
+}
+
+.main {
+  margin-left: 200px; /* Same as the width of the sidenav */
+
+}
+.main-container {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 25px
+}
+  /*padding: 0px 5px; */
+}
+
+@media screen and (max-height: 450px) {
+  .sidenav {padding-top: 15px;}
+  .sidenav a {font-size: 18px;}
+}
+</style>
+
+<!-- TITLE INFO  -->
+
+<div class="sidenav">
+  <a href="#about">Seattle Pets</a>
+  <a href="#top"> <font face="Roboto" size="2" color= "#1f78b4"> top of page </font></a>
+</div>
+
+<!-- CONTENT STARTS HERE  -->
+
+<div class="main">
+<div class="body">
+
+##Author: __<font color="#e31a1c">Jessica Marx</font>__
+
+##Date: __<font color="#e31a1c"; font size="3">`r format(Sys.time(), "%d %B %Y")`</font>__
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+```
+
+```{r package, message = FALSE, warning = FALSE}
+# load packages, install if needed
+packages = c(
+      "dplyr"
+    , "ggplot2"
+    , "formattable"
+    , "plotly"
+    , "RColorBrewer"
+    , "scales"
+    , "stringr"
+    , "tidyr"
+    , "ElmeR"
+    , "RJDBC"
+    , "kableExtra"
+    , "wesanderson"
+    , "reshape2"
+    , "rtweet"
+    , "tidytext"
+    , "lubridate"
+    , "wordcloud"
+    , "ggpubr"
+    , "ggthemes"
+    , "knitrBootstrap"
+    , "DT"
+    , "MatchIt"
+    , "beyonce"
+    , "UpSetR"
+    , "gganimate"
+    , "wordcloud2"
+    , "widyr"
+    , "ggraph"
+    , "igraph"
+    , "aod"
+    , "corrplot"
+    , "ROCR"
+    , "InformationValue"
+    , "car"
+    , "glmnet"
+    , "caret"
+    , "kernlab"
+    , "pdp"
+    , "rpart.plot"
+    , "rpart"
+    , "e1071"
+    )
+
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE)
+    library(x, character.only = TRUE)
+  }
+})
+
+
+options(scipen= 999)
+theme_set(theme_minimal(base_size = 9, base_family = "Roboto"))
+```
+
+```{r functions}
+
+#functions!
+
+#round 
+round.to <- function(x, b) {
+  round(x/b)*b
+}
+
+#odds to probability
+odds.to.prob <- function(odds) {
+  odds/(1 + odds) 
+}
+
+#log odds to probability 
+logit2prob <- function(logit){
+  odds <- exp(logit)
+  prob <- odds / (1 + odds)
+  return(prob)
+}
+
+#convert to a range
+range01 <- function(x){
+  (x-min(x))/(max(x)-min(x))
+}
+
+#function to get vector of color values from RColorBrewer
+get_hex_values <- function(pal) {
+	brewer.pal(brewer.pal.info[pal, "maxcolors"], pal)
+}
+paired_cols <- get_hex_values(pal = "Paired")
+
+
+```
+
+##Top Dog Breeds 
+
+```{r, fig.height=5, fig.width=8}
+
+a = seattle_pet_licenses %>% 
+  filter(species == "Dog") %>% 
+  select(primary_breed, license_issue_date) %>% 
+  mutate(license_issue_date = as.Date(license_issue_date),
+         year = lubridate::year(license_issue_date)) %>% 
+  group_by(primary_breed, year) %>% 
+  count() %>% 
+  arrange(year, desc(n)) %>% 
+  ungroup() %>% 
+  group_by(year) %>% 
+  mutate(rank = row_number()) %>% 
+  filter(rank <= 5, year >= 2010) %>%
+  mutate(rev_rank = rank(-rank)) %>% 
+  ungroup() 
+
+colourCount = length(unique(a$primary_breed))
+getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+
+ggplot(a, aes(x = year, y = reorder(rev_rank, rev_rank), fill = primary_breed)) +
+  geom_bar(stat = "identity", position = "stack", color = "white") + 
+  geom_text(stat = "identity", position = "stack", aes(label = rank), color = "black", size = 3, vjust = 1, hjust = 3) + 
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  scale_x_continuous(breaks = seq(2010, 2016, 1)) + 
+  coord_flip() +
+  ylab("rank") + 
+  scale_fill_manual(values = getPalette(colourCount), name = "Breed") +  
+  ggtitle(label = "Top Five Seattle Dog Breeds by Year")
+
+
+```
+
+##Breed Acceleration 
+
+```{r}
+
+a = seattle_pet_licenses %>% 
+  filter(species == "Dog") %>% 
+  select(primary_breed, license_issue_date) %>% 
+  mutate(license_issue_date = as.Date(license_issue_date),
+         year = lubridate::year(license_issue_date)) %>% 
+  filter(year >= 2015) %>% 
+  group_by(primary_breed, year) %>% 
+  count() %>%
+  spread(year, n) %>% 
+  drop_na() %>% 
+  mutate(pct_increase = `2016`/`2015`-1) %>% 
+  arrange(desc(pct_increase)) %>% 
+  head(20) %>% 
+  ungroup()
+
+b = seattle_pet_licenses %>% 
+  filter(species == "Dog") %>% 
+  select(secondary_breed, license_issue_date) %>% 
+  mutate(license_issue_date = as.Date(license_issue_date),
+         year = lubridate::year(license_issue_date)) %>% 
+  filter(year >= 2015) %>% 
+  group_by(secondary_breed, year) %>% 
+  count() %>%
+  spread(year, n) %>% 
+  drop_na() %>% 
+  mutate(pct_increase = `2016`/`2015`-1) %>% 
+  arrange(desc(pct_increase)) %>% 
+  head(20) %>% 
+  ungroup()
+
+breeds = a %>% 
+  select(primary_breed, pct_increase) %>% 
+  rename("breed" = primary_breed) %>% 
+  mutate(breed_level = "Primary Breed") %>% 
+  rbind(
+    b %>% 
+  select(secondary_breed, pct_increase) %>% 
+  rename("breed" = secondary_breed) %>% 
+  mutate(breed_level = "Secondary Breed")
+  ) %>% 
+  group_by(breed_level) %>% 
+  arrange(breed_level, desc(pct_increase)) %>% 
+  mutate(rank = row_number()) %>% 
+  ungroup()
+  
+colourCount = length(unique(breeds$breed))
+getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+
+breeds %>% 
+  ggplot(aes(x = reorder(breed, -rank), y = pct_increase, fill = breed)) +
+  geom_bar(stat = "identity") + 
+  scale_fill_manual(values = getPalette(colourCount), name = "Breed") +  
+  scale_y_continuous(labels = percent_format()) +
+  ylab("Percent Increase") + 
+  xlab("Breed") + 
+  ggtitle(label = "Year Over Year (YOY) Increase in Breeds") + 
+    coord_flip() + 
+    theme(legend.position = "none") + 
+  facet_wrap(~breed_level, scales = "free_y")
+
+
+```
+
+##Dog Names
+
+```{r, fig.height=5, fig.width=8}
+
+a = seattle_pet_licenses %>% 
+  filter(species == "Dog",
+         !is.na(animal_s_name)) %>% 
+  select(animal_s_name, license_issue_date) %>% 
+  mutate(animal_s_name = if_else(is.na(animal_s_name), "No Name", animal_s_name) ,
+         license_issue_date = as.Date(license_issue_date),
+         year = lubridate::year(license_issue_date)) %>% 
+  group_by(animal_s_name, year) %>% 
+  count() %>% 
+  arrange(year, desc(n)) %>% 
+  ungroup() %>% 
+  group_by(year) %>% 
+  mutate(rank = row_number()) %>% 
+  filter(rank <= 5, year >= 2010) %>%
+  mutate(rev_rank = rank(-rank)) %>% 
+  ungroup() 
+
+colourCount = length(unique(a$animal_s_name))
+getPalette = colorRampPalette(brewer.pal(12, "Paired"))
+
+ggplot(a, aes(x = year, y = reorder(rev_rank, rev_rank), fill = animal_s_name)) +
+  geom_bar(stat = "identity", position = "stack", color = "white") + 
+  scale_fill_manual(values = getPalette(colourCount), name = "Name") +  
+  geom_text(stat = "identity", position = "stack", aes(label = rank), color = "black", size = 3, vjust = 1, hjust = 3) + 
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  scale_x_continuous(breaks = seq(2010, 2016, 1)) + 
+  coord_flip() +
+  ylab("rank") + 
+  
+  ggtitle(label = "Top Five Seattle Dog Names by Year")
+
+
+```
+
+##Breed Combos {.tabset}
+
+###Breed Heatmap
+Which primary and secondary breek combinations are most popular? 
+
+```{r}
+
+top_breeds = rbind(
+(seattle_pet_licenses %>% 
+  filter(species == "Dog") %>% 
+  select(primary_breed) %>% 
+  group_by_all() %>% 
+  count() %>% 
+  arrange(desc(n)) %>% 
+  head(20) %>% 
+  rename("breed" = primary_breed)),
+(seattle_pet_licenses %>% 
+  filter(species == "Dog") %>% 
+  select(secondary_breed) %>% 
+  group_by_all() %>% 
+  count() %>% 
+  arrange(desc(n)) %>% 
+  head(20) %>% 
+  rename("breed" = secondary_breed)
+)) %>% 
+  group_by(breed) %>% 
+  summarise(n = sum(n)) %>% 
+  arrange(desc(n)) %>% 
+  ungroup() %>% 
+  mutate(breed = if_else(is.na(breed), "Unknown", breed))
+
+plot = seattle_pet_licenses %>% 
+  filter(species == "Dog", 
+         primary_breed %in% top_breeds$breed
+         ,secondary_breed %in% top_breeds$breed
+         ) %>% 
+  select(primary_breed, secondary_breed) %>% 
+  mutate(secondary_breed = if_else(is.na(secondary_breed), primary_breed, secondary_breed)) %>% 
+  group_by_all() %>% 
+  count() %>% 
+  arrange(desc(n)) %>% 
+  #head(50) %>% 
+  mutate(log = log(n + 1)) %>% 
+  ggplot(
+    aes(x = primary_breed,
+        y = secondary_breed, 
+        fill = log,
+        text = paste(
+          "Primary Breed:", primary_breed,
+          "<br>Secondary Breed:", secondary_breed,
+          "<br>Dogs:", comma(n)
+        )
+      )
+    ) + 
+  geom_tile() +
+  theme(axis.text.x = element_text(angle = -30, hjust = 0)) + 
+  scale_fill_gradientn(colours = blues9,
+    na.value = "white",
+    breaks=c(0,7),
+    # # # #breaks = c(400, 700000),
+    labels=c("0","1K"),
+    limits=c(0,7),
+    # # # #limits = c(400, 700000),
+    name = "Dogs") +
+  ylab("Secondary Breed") +
+  xlab("Primary Breed") 
+
+ggplotly(plot, tooltip = "text") %>% 
+  layout(autosize = F, width = 800, height = 600)
+
+```
+<br>
+<br>
+<br>
+<br> 
+
+###Upset Plot (like a Venn Diagram, but better)
+<br>
+<img src="seattle_dogs.png" alt="" width="800"/>
+<br>
+
+---
+
+
+```{r}
+
+#This is the true code for this plot. Unfortunately, this package has a bug -- one that prints a giant blank space before the plot, which makes it less than optimal for publishing. My hack around this is to reproduce the plot using this code and save the image in my R Project file. From there I can just pull it in with html. A hack, yes, but one that works until the bug is fixed (according to their GitHub page, it's a WIP!). 
+
+# upset_dog = rbind(
+# (seattle_pet_licenses %>% 
+#   filter(species == "Dog") %>% 
+#    mutate(primary_breed = if_else(is.na(primary_breed), "Unknown", primary_breed)) %>% 
+#   select(primary_breed, license_number) %>% 
+#   rename("breed" = primary_breed)),
+# (seattle_pet_licenses %>% 
+#   filter(species == "Dog") %>% 
+#    mutate(secondary_breed = if_else(is.na(secondary_breed), "Unknown", secondary_breed)) %>%  
+#   select(secondary_breed, license_number) %>% 
+#   rename("breed" = secondary_breed)
+# )) %>% 
+#   group_by(license_number, breed) %>%
+#   count() %>% 
+#   mutate(value = 1) %>%
+#   select(-license_number, -n) %>% 
+#   spread(breed, value, fill = 0) %>%
+#   as.data.frame()
+# 
+# upset(upset_dog, 
+#       order.by = "freq",
+#       nsets = 15, 
+#       mainbar.y.label = "Dog Breed Intersections", 
+#       sets.x.label = "Total Number of Breed in Sample",
+#       matrix.color = "#3288bd",
+#       main.bar.color = "#f46d43",
+#       sets.bar.color = "#3288bd", 
+#       point.size = 2.5, line.size = 1, 
+#       nintersects = 15,
+#       shade.color = "#9e0142",
+#       text.scale = c(1.5, 1.5, 1.5, 1.5, 1.5, 1.5),
+#       group.by = "degree")
+
+
+
+```
+
+
+###Breed Network
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, fig.width=9}
+
+breed_pairs = seattle_pet_licenses %>% 
+  filter(species == "Dog") %>% 
+  select(primary_breed, secondary_breed) %>% 
+  pairwise_count(primary_breed, secondary_breed, sort = TRUE)
+
+# make an index eg. every 2nd
+ind <- seq(1, nrow(breed_pairs), by=2)
+
+#this would exclude the ind row
+breed_pairs <- breed_pairs[-ind, ] %>% 
+  rename("from" = item1,
+         "to" = item2)
+
+edges <- breed_pairs %>% 
+  rename("weight" = n) %>% 
+  head(100)
+nodes <- edges %>% gather(item, id, from, to) %>%
+  group_by(id) %>% 
+  dplyr::summarise(weight = sum(weight)) %>% 
+  arrange(desc(weight)) %>% 
+  #mutate(item_type = if_else(id %in% brand_tot$brand_name, "DSNR", "NON-DSNR")) %>% 
+  ungroup()
+
+# adding different features into the nodes
+nodes$font.size = rescale(nodes$weight, to = c(70, 200))/sapply(nodes$id, function(x) nchar(as.character(x)))
+nodes$shape = 'circle'
+# adding different features into the edges
+edges$width = rescale(edges$weight, to = c(4, 25))
+#edges$length = rescale(edges$width, to = c(300, 400))
+# use the from nodes color as the color of the edges
+#edges$color = nodes[['color']][edges[['from']]]
+edges$color = "#1f78b4"
+# create a igraph object for future plotting
+net = graph_from_data_frame(d = edges, vertices = nodes)
+
+library(visNetwork)
+# interactive plot of the features
+visNetwork(nodes, edges)%>%
+  visEdges(smooth = TRUE, dashes = TRUE) %>%
+  visNodes(shadow = TRUE, color=list(background="pink", highlight="#a6cee3", border="black")) %>%
+  visIgraphLayout(layout = "layout_nicely") %>%
+  visOptions(highlightNearest = list(enabled=TRUE, degree = list(from = 1, to = 1), labelOnly=TRUE)) %>% 
+  visLayout(randomSeed = 1234) 
+
+```
+
+##Breed Characteristics {.tabset}
+What are the words used to describe different dog breeds? All breed descriptions were obtained through the <a href="https://www.kaggle.com/rturley/pet-breed-characteristics" target="_blank">Pet Breeds Characteristics</a> public dataset.
+
+```{r}
+
+a = dog_words %>% 
+  group_by(word) %>% 
+  count() %>% 
+  drop_na() %>% 
+  arrange(desc(n))
+
+wordcloud(a$word, a$n, , 2, ,FALSE, , .15, rev(get_hex_values("Paired")))
+#wordcloud2(a, size = .5, figPath = "dog_outline.png")
+#letterCloud(a, word = "D")
+
+
+```
+
+We will score the top 20 breeds using the AFINN lexicon, which scores words by sentiment. 
+<br>
+<br>
+
+Before doing so, let's inspect the data and make sure that we agree with the way the Lexicon is classifying words given our specific context. 
+
+```{r}
+
+AFINN <- get_sentiments("afinn")
+
+pal <- rev(beyonce_palette(22, 100, type = "continuous"))
+
+plot_c = barsentiment %>%
+    dplyr::count(sentiment, word, n=n) %>%
+    dplyr::ungroup() 
+
+dog_breed_characteristics %>% 
+  select(BreedName, Group1, Group2, Temperment) %>% 
+  unnest_tokens(word, Temperment) %>% 
+  inner_join(AFINN) %>% 
+  select(word, score) %>% 
+  unique() %>% 
+  arrange(desc(score)) %>% 
+  mutate(Sentiment = if_else(score > 0, "Positive", "Negative")) %>% 
+  ggplot(aes(x = reorder(word, score), y = score, fill = Sentiment)) +
+  geom_bar(stat = "identity") + 
+  scale_fill_brewer(palette = "Set1") + 
+  coord_flip() + 
+  xlab("Word") + 
+  ylab("Score")
+
+```
+
+A dog being _alert_ does not seem like it would be a bad thing - let's change that from a -1 to a +1. 
+
+Some dog breeds are described by more words than others. A histogram helps us visualize and normalize the data. 
+
+```{r}
+
+AFINN = AFINN %>% 
+  mutate(score = ifelse(word == "alert", 1, score))
+
+dog_words = dog_breed_characteristics %>% 
+  select(BreedName, Group1, Group2, Temperment) %>% 
+  unnest_tokens(word, Temperment)
+
+dog_scores = dog_words %>% 
+  inner_join(AFINN) %>% 
+  group_by(BreedName) %>% 
+  summarise(total_score = sum(score),
+            med_score = median(score),
+            total_words = n_distinct(word)) %>% 
+  mutate(mean_score = total_score/total_words)
+
+dog_scores %>% 
+  gather(KPI, value, total_score, total_words, mean_score, med_score) %>% 
+  ggplot(aes(x = value, fill = KPI)) + 
+  geom_histogram(binwidth = 0.5) + 
+  facet_wrap(~KPI, scales = "free_x") + 
+  xlab("") + 
+  ylab("Frequency") + 
+  scale_fill_brewer(palette = "Paired")
+
+```
+
+Now we're ready to score our dogs by breed. 
+
+
+###Top 20
+
+```{r}
+
+dog_scores %>% 
+  arrange(desc(total_score)) %>% 
+  head(20) %>% 
+  ggplot(aes(x = reorder(BreedName, total_score), y = total_score, fill = total_score)) +
+  geom_bar(stat = "identity") + 
+  scale_fill_gradientn(
+    colours = pal, name = "Score") +
+  coord_flip() + 
+  xlab("Breed") + 
+  ylab("Total Word Score")
+
+```
+
+Are dogs with more words scored higher? We can normalize by taking the mean word score. 
+
+```{r}
+
+dog_scores %>% 
+  arrange(desc(mean_score), BreedName) %>%  
+  head(20) %>% 
+  ggplot(aes(x = reorder(BreedName, mean_score), y = mean_score, fill = total_score)) +
+  geom_bar(stat = "identity") + 
+  scale_fill_gradientn(
+    colours = pal, name = "Total Score") +
+  coord_flip() + 
+  xlab("Breed") + 
+  ylab("Mean Word Score")
+
+```
+
+
+<!-- ###Bottom 20 -->
+
+<!-- ```{r} -->
+
+<!-- pal <- (beyonce_palette(48, 100, type = "continuous")) -->
+
+<!-- dog_scores %>%  -->
+<!--   arrange(mean_score) %>%  -->
+<!--   head(20) %>%  -->
+<!--   ggplot(aes(x = reorder(BreedName, score), y = score, fill = score)) + -->
+<!--   geom_bar(stat = "identity") +  -->
+<!--   scale_fill_gradientn( -->
+<!--     colours = pal, name = "Score") + -->
+<!--   coord_flip() +  -->
+<!--   xlab("Breed") +  -->
+<!--   ylab("Score") -->
+
+<!-- ``` -->
+
+###Top 20 Breed Combos
+
+```{r}
+
+seattle_pet_licenses$primary_breed <- sub("(\\w+),\\s(\\w+)","\\2 \\1", seattle_pet_licenses$primary_breed)
+
+seattle_pet_licenses$secondary_breed <- sub("(\\w+),\\s(\\w+)","\\2 \\1", seattle_pet_licenses$secondary_breed)
+
+pal <- rev(beyonce_palette(22, 100, type = "continuous"))
+
+seattle_pet_licenses %>% 
+  filter(species == "Dog") %>% 
+  select(primary_breed, secondary_breed) %>% 
+  unique() %>% 
+  mutate(id = row_number()) %>% 
+  left_join(dog_breed_characteristics, by = c("primary_breed" = "BreedName")) %>% 
+  select(primary_breed, secondary_breed, id, Temperment) %>% 
+  rename("primary_temp" = Temperment) %>% 
+  left_join(dog_breed_characteristics, by = c("secondary_breed" = "BreedName")) %>% 
+  select(primary_breed, secondary_breed, id, primary_temp, Temperment) %>% 
+  rename("secondary_temp" = Temperment) %>% 
+  mutate(temp_combo = paste(primary_temp, secondary_temp, sep = ", ")) %>% 
+  select(-primary_temp, -secondary_temp) %>% 
+unnest_tokens(word, temp_combo) %>% 
+  mutate(breed_combo = paste(primary_breed, secondary_breed, sep = " + ")) %>% 
+  drop_na() %>% 
+  select(-primary_breed, -secondary_breed) %>% 
+  inner_join(AFINN) %>% 
+  group_by(id, breed_combo) %>% 
+  summarise(avg_score = mean(score),
+            score = sum(score)) %>% 
+  arrange(desc(avg_score)) %>% 
+  ungroup() %>% 
+  mutate(rank = dense_rank(-avg_score)) %>% 
+  head(20) %>% 
+  ggplot(aes(x = reorder(breed_combo, avg_score), y = avg_score, fill = score)) +
+  geom_bar(stat = "identity") + 
+  geom_text(stat = "identity", size = 3, hjust = -1, aes(label = rank)) + 
+  scale_fill_gradientn(colours = pal, name = "Score") +
+  coord_flip() + 
+  xlab("Breed") + 
+  ylab("Score")
+  
+
+```
+
+###By Group 
+
+Let's hear it for the the Hounds! 
+
+```{r}
+
+group_scores = dog_words %>% 
+  filter(!Group1 == "Southern") %>% 
+  select(Group1, word) %>% 
+  unique() %>% 
+  inner_join(AFINN) %>% 
+  group_by(Group1) %>% 
+  summarise(avg_score = mean(score),
+            score = sum(score)) %>% 
+  drop_na()
+
+group_scores %>% 
+  arrange(desc(avg_score)) %>% 
+  #head(20) %>% 
+  ggplot(aes(x = reorder(Group1, avg_score), y = avg_score, fill = score)) +
+  geom_bar(stat = "identity") + 
+  scale_fill_gradientn(
+    colours = pal, name = "Total Score") +
+  coord_flip() + 
+  xlab("Breed Group") + 
+  ylab("Mean Score")
+
+```
+
+###Breed Group 1 + Group 2
+
+```{r}
+
+group_both = dog_words %>% 
+  filter(!Group1 == "Southern") %>% 
+  inner_join(AFINN) %>% 
+  mutate(group_combo = paste(Group1, Group2, sep = " + ")) %>% 
+  group_by(group_combo) %>% 
+  summarise(
+    avg_score = mean(score), 
+    score = sum(score)
+    ) %>% 
+  #summarise(count = n_distinct(word)) %>% 
+  drop_na()
+
+group_both %>% 
+  arrange(desc(avg_score)) %>% 
+  #head(20) %>% 
+  ggplot(aes(x = reorder(group_combo, avg_score), y = avg_score, fill = score)) +
+  geom_bar(stat = "identity") + 
+  scale_fill_gradientn(
+    colours = pal, name = "Total Score") +
+  coord_flip() + 
+  xlab("Breed Group 1 + Breed Group 2") + 
+  ylab("Mean Score")
+
+```
+
+###Intelligence Ratings
+Does intelligence correspond with price? No. 
+
+```{r}
+
+dog_breed_characteristics %>% 
+  select(BreedName, Intelligence, AvgPupPrice) %>% 
+  arrange(desc(Intelligence)) %>% 
+  head(30) %>% 
+  mutate(BreedName = reorder(BreedName, -Intelligence)) %>% 
+  drop_na() %>% 
+  plot_ly(
+    x = ~BreedName
+    , y = ~Intelligence
+    , type = "bar"
+    , name = ~paste("Intelligence")
+    , height = 500
+    , width = 1000
+    #, legendgroup = ~Intelligence
+    , text = ~paste(
+        "Breed:", BreedName
+        , "<br>Intelligence Rating:", Intelligence
+        , "<br>Average Puppy Price:", dollar(AvgPupPrice)
+        )
+    , hoverinfo = 'text'
+  ) %>% 
+  add_trace(
+    y = ~AvgPupPrice
+    , type = "scatter"
+    , mode = "lines+markers"
+    , yaxis = "y2"
+    , name = ~paste("Avg Price")
+  ) %>% 
+  layout(
+    yaxis2 = list(
+      side = "right"
+      , overlaying = "y"
+      , title = "Avg Dog Price $"
+    )
+    , xaxis = list(
+      tickangle = 30
+      , title = "Breed"
+    )
+  )
+  
+
+```
+
+
+##Pets by Zip YOY
+```{r}
+
+seattle_pet_licenses %>% 
+    drop_na() %>% 
+  select(license_issue_date
+         , species
+         , zip_code
+         , license_number) %>% 
+  mutate(license_issue_date = as.Date(license_issue_date),
+         year = lubridate::year(license_issue_date),
+         zip_code = (as.factor(zip_code))
+         ) %>%
+  group_by(year, zip_code, species) %>% 
+  summarise(new_pets = n_distinct(license_number)) %>% 
+  ungroup() %>% 
+  plot_ly(
+  x = ~zip_code
+  , y = ~new_pets
+  , color = ~species
+  , type = "bar"
+  , legend_group = ~species
+  , frame = ~year
+  ) %>% 
+  layout(
+    barmode = "stack"
+    , xaxis = list(title = "Zip Code")
+    , yaxis = list(title = "New Pets")
+  )
+
+```
+
+
